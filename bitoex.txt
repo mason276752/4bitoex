@@ -26,9 +26,11 @@ docker tag hyperledger/fabric-peer:x86_64-0.6.1-preview hyperledger/fabric-peer:
 docker tag hyperledger/fabric-peer:x86_64-0.6.1-preview hyperledger/fabric-baseimage
 
 
+#########################################################################
+
 
 docker run --name=vp0 \
-    -v 7050:7050 \
+    -p 7050:7050 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e CORE_VM_ENDPOINT=unix:///var/run/docker.sock \
     -e CORE_LOGGING_LEVEL=debug \
@@ -58,7 +60,7 @@ docker run --name=vp1 \
 docker run --name=vp2 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e CORE_VM_ENDPOINT=unix:///var/run/docker.sock \
-    -e CORE_LOGGING_LEVEL=debug \
+    -e CORE_LOGGING_LEVEL=info \
     -e CORE_PEER_ID=vp2 \
     -e CORE_PEER_NETWORKID=dev \
     -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft \
@@ -72,7 +74,7 @@ docker run --name=vp2 \
 docker run --name=vp3 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e CORE_VM_ENDPOINT=unix:///var/run/docker.sock \
-    -e CORE_LOGGING_LEVEL=debug \
+    -e CORE_LOGGING_LEVEL=warring \
     -e CORE_PEER_ID=vp3 \
     -e CORE_PEER_NETWORKID=dev \
     -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft \
@@ -84,7 +86,7 @@ docker run --name=vp3 \
     hyperledger/fabric-peer:latest peer node start
 
 
-
+#########################################################################
 
 peer chaincode deploy \
 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 \
@@ -170,3 +172,7 @@ Connection: close
   },
   "id": 0
 }
+
+
+docker ps -a | egrep '(dev-)?vp\d' |awk '{print $1}' |xargs docker rm -f
+docker images |grep dev-vp |awk '{print $1}' |xargs docker rmi -f
