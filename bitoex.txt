@@ -74,7 +74,7 @@ docker run --name=vp2 \
 docker run --name=vp3 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e CORE_VM_ENDPOINT=unix:///var/run/docker.sock \
-    -e CORE_LOGGING_LEVEL=warring \
+    -e CORE_LOGGING_LEVEL=info \
     -e CORE_PEER_ID=vp3 \
     -e CORE_PEER_NETWORKID=dev \
     -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft \
