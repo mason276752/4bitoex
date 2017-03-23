@@ -1,0 +1,78 @@
+docker run -p 7050:7050 -p 7051:7051 hyperledger/fabric-peer peer node start
+
+CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample1 ./Sample1
+
+deploy init []
+invoke invoke []
+query query []
+
+CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample2 ./Sample2
+
+deploy init ["300"]
+query get ["Alice"]
+query get ["Bob"]
+invoke put ["Alice","250"]
+query get ["Alice"]
+invoke del ["Alice"]
+query get ["Alice"]
+invoke put ["Alice","200"]
+query get ["Alice"]
+query put ["Alice","150"]
+query get ["Alice"]
+
+CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample3 ./Sample3
+
+deploy init []
+invoke invoke []
+query query []
+
+CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample4 ./Sample4
+
+deploy init []
+query row ["t","This Is String","1"]
+query rows ["t"]
+query rows ["f"]
+invoke invoke []
+query rows ["f"]
+
+CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample5 ./Sample5
+
+deploy init []
+query query ["Alice"]
+query query ["Bob"]
+invoke sendPoint ["7","4","m","5","time","8","point","12000","from","Bob","Alice"]
+query query ["Alice"]
+query query ["Bob"]
+invoke getPoint ["Alice","7","0"]
+query query ["Alice"]
+##休息一下
+invoke getPoint ["Alice","7","10"]
+query query ["Alice"]
+invoke getPoint ["Alice","7","0"]
+query query ["Alice"]
+
+
+POST /chaincode HTTP/1.1
+Host: 127.0.0.1:7050
+User-Agent: curl/7.51.0
+Accept: */*
+Content-Length: 219
+Connection: close
+
+{
+  "jsonrpc": "2.0",
+  "method": "deploy",
+  "params": {
+    "type": 1,
+    "chaincodeID": {
+      "name":"Sample1"
+    },
+    "ctorMsg": {
+      "function":"init",
+      "args": []
+    }
+  },
+  "id": 0
+}
+
+
