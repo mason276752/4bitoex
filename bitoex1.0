@@ -1,0 +1,214 @@
+##抓取 fabric-1.0 alpha from yeasy
+ARCH=x86_64
+BASE_VERSION=1.0.0-preview
+IMG_VERSION=v1.0.0-alpha
+docker pull yeasy/hyperledger-fabric-base:$IMG_VERSION \
+  && docker pull yeasy/hyperledger-fabric-peer:$IMG_VERSION \
+  && docker pull yeasy/hyperledger-fabric-orderer:$IMG_VERSION \
+  && docker pull yeasy/hyperledger-fabric-ca:$IMG_VERSION
+
+
+##tag fabric:latest
+ARCH=x86_64
+BASE_VERSION=1.0.0-preview
+IMG_VERSION=v1.0.0-alpha
+docker tag yeasy/hyperledger-fabric-peer:$IMG_VERSION hyperledger/fabric-peer \
+  && docker tag yeasy/hyperledger-fabric-orderer:$IMG_VERSION hyperledger/fabric-orderer \
+  && docker tag yeasy/hyperledger-fabric-ca:$IMG_VERSION hyperledger/fabric-ca \
+  && docker tag yeasy/hyperledger-fabric-base:$IMG_VERSION hyperledger/fabric-baseimage \
+  && docker tag yeasy/hyperledger-fabric-base:$IMG_VERSION hyperledger/fabric-ccenv:$ARCH-$BASE_VERSION \
+  && docker tag yeasy/hyperledger-fabric-base:$IMG_VERSION hyperledger/fabric-baseos:$ARCH-$BASE_VERSION
+
+
+
+##啟動orderer
+docker run  -p 7050:7050 --name orderer0 \
+-e ORDERER_GENERAL_LEDGERTYPE=ram \
+-e ORDERER_GENERAL_BATCHTIMEOUT=10s \
+-e ORDERER_GENERAL_MAXMESSAGECOUNT=10 \
+-e ORDERER_GENERAL_BATCHSIZE_MAXMESSAGECOUNT=10 \
+-e ORDERER_GENERAL_MAXWINDOWSIZE=1000 \
+-e ORDERER_GENERAL_LISTENADDRESS=0.0.0.0 \
+-e ORDERER_GENERAL_LOGLEVEL=debug \
+-e ORDERER_GENERAL_LISTENPORT=7050 \
+-e ORDERER_RAMLEDGER_HISTORY_SIZE=100 \
+-e ORDERER_GENERAL_ORDERERTYPE=solo \
+hyperledger/fabric-orderer orderer
+
+
+##啟動peer
+docker run -v /var/run/docker.sock:/var/run/docker.sock --name peer0 \
+-p 7051:7051 \
+-v /var/run/:/host/var/run/ \
+-e CORE_PEER_ADDRESSAUTODETECT=true \
+-e CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock \
+-e CORE_NEXT=true \
+-e CORE_LOGGING_LEVEL=Debug \
+-e CORE_PEER_ENDORSER_ENABLED=true \
+-e CORE_PEER_COMMITTER_ENABLED=true \
+-e CORE_PEER_GOSSIP_ORGLEADER=true \
+-e CORE_PEER_GOSSIP_IGNORESECURITY=true \
+-e CORE_PEER_ID=peer0 \
+-e CORE_PEER_NETWORKID=net1 \
+hyperledger/fabric-peer peer node start -o 172.17.0.2:7050
+
+
+##啟動CLI
+docker run -v /var/run/docker.sock:/var/run/docker.sock --name cli \
+-v /var/run/:/host/var/run/ \
+-e CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock \
+-e CORE_LOGGING_LEVEL=DEBUG \
+-it hyperledger/fabric-peer bash
+
+##創建通道
+peer channel create -o 172.17.0.2:7050 -c myc1 
+##加入通道
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer channel join -b myc1.block
+
+##安裝chaincode
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode install -n mycc -v v0 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 
+
+##初始化chaincode
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode instantiate -o 172.17.0.2:7050  -v v0 -n mycc -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}'
+
+##invoke
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode invoke -o 172.17.0.2:7050  -n mycc -C myc1 -c '{"Args":["invoke","a","b","10"]}'
+
+##query
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+##用invoke來query
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode invoke -o 172.17.0.2:7050  -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+
+
+
+
+##啟動peer
+docker run -v /var/run/docker.sock:/var/run/docker.sock --name peer1 \
+-v /var/run/:/host/var/run/ \
+-e CORE_PEER_ADDRESSAUTODETECT=true \
+-e CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock \
+-e CORE_LOGGING_LEVEL=Debug \
+-e CORE_NEXT=true \
+-e CORE_PEER_ENDORSER_ENABLED=true \
+-e CORE_PEER_COMMITTER_ENABLED=true \
+-e CORE_PEER_GOSSIP_ORGLEADER=true \
+-e CORE_PEER_GOSSIP_IGNORESECURITY=true \
+-e CORE_PEER_ID=peer1 \
+-e CORE_PEER_NETWORKID=net1 \
+hyperledger/fabric-peer peer node start -o 172.17.0.2:7050
+
+
+##啟動peer
+docker run -v /var/run/docker.sock:/var/run/docker.sock --name peer2 \
+-v /var/run/:/host/var/run/ \
+-e CORE_PEER_ADDRESSAUTODETECT=true \
+-e CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock \
+-e CORE_LOGGING_LEVEL=Debug \
+-e CORE_NEXT=true \
+-e CORE_PEER_ENDORSER_ENABLED=true \
+-e CORE_PEER_COMMITTER_ENABLED=true \
+-e CORE_PEER_GOSSIP_ORGLEADER=true \
+-e CORE_PEER_GOSSIP_IGNORESECURITY=true \
+-e CORE_PEER_ID=peer2 \
+-e CORE_PEER_NETWORKID=net1 \
+hyperledger/fabric-peer peer node start -o 172.17.0.2:7050
+
+##加入通道
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer channel join -b myc1.block
+
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer channel join -b myc1.block
+
+##安裝chaincode
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode install -n mycc -v v0 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer chaincode install -n mycc -v v0 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+
+##query
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+
+##安裝新版本
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode install -n mycc -v v1 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+
+##做upgrade
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode upgrade -o 172.17.0.2:7050  -v v1 -n mycc -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}'
+
+##做 query
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+##另一個peer 做query
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+##另一個peer 安裝
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode install -n mycc -v v1 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+
+##再做一次 query
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+##做upgrade 降級
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode upgrade -o 172.17.0.2:7050  -v v0 -n mycc -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}'
+
+##再做一次 query
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc1 -c '{"Args":["query","a"]}'
+
+
+
+
+
+
+
+##建立新通道
+peer channel create -o 172.17.0.2:7050 -c myc2
+
+##加入通道
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer channel join -b myc2.block
+
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer channel join -b myc2.block
+
+##初始化chaincode
+CORE_PEER_ADDRESS=172.17.0.5:7051 peer chaincode instantiate -o 172.17.0.2:7050  -v v1 -n mycc -C myc2 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}'
+
+##安裝chaincode
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer chaincode install -n mycc -v v1 -C myc1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+
+##query
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc2 -c '{"Args":["query","a"]}'
+
+
+##query
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc2 -c '{"Args":["query","a"]}'
+
+##invoke
+CORE_PEER_ADDRESS=172.17.0.3:7051 peer chaincode invoke -o 172.17.0.2:7050  -n mycc -C myc1 -c '{"Args":["invoke","a","b","10"]}'
+
+##query
+CORE_PEER_ADDRESS=172.17.0.6:7051 peer chaincode query -o  172.17.0.2:7050 -n mycc -C myc2 -c '{"Args":["query","a"]}'
+
+
+##run ca
+docker run --name ca -it hyperledger/fabric-ca bash
+
+##啟動ca server
+fabric-ca-server init -b admin:adminpw
+fabric-ca-server start
+##或是
+fabric-ca-server start -b admin:adminpw
+
+##再一個ca 
+docker exec -it ca bash
+
+##登入帳號
+fabric-ca-client enroll -u http://admin:adminpw@127.0.0.1:7054
+
+##拿新憑證
+fabric-ca-client reenroll
+
+##註冊新帳號
+fabric-ca-client register --id.name newuser --id.affiliation org1 --id.type client --id.secret 123456
+
+##登入新帳號
+fabric-ca-client enroll -u http://newuser:123456@127.0.0.1:7054
