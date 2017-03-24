@@ -1,4 +1,4 @@
-docker run -p 7050:7050 -p 7051:7051 hyperledger/fabric-peer peer node start
+docker run -p 7050:7050 -p 7051:7051 hyperledger/fabric-peer peer node start --peer-chaincodedev
 
 CORE_PEER_ADDRESS=127.0.0.1:7051 CORE_CHAINCODE_ID_NAME=Sample1 ./Sample1
 
